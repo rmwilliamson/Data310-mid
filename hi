@@ -1,0 +1,186 @@
+# Midterm
+
+
+# Question 3
+
+### If we want to use all the unstandardized observations for 'Temperature (C)' and predict the Humidity the resulting root mean squared error is (just copy the first 4 decimal places)
+
+```markdown
+import numpy as np
+import pandas as pd
+from sklearn.svm import LinearSVR
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
+from sklearn.datasets import load_boston
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import KFold
+from sklearn.metrics import mean_absolute_error as MAE
+from sklearn.metrics import mean_squared_error as MSE
+from sklearn.metrics import r2_score
+
+data = pd.read_csv('drive/MyDrive/Colab Notebooks/weatherHistory.csv')
+
+temp = data['Temperature (C)']
+temp = temp.values
+y = data['Humidity']
+y = y.values
+
+model = LinearRegression()
+model.fit(temp.reshape(-1,1),y)
+
+y_pred = model.predict(temp.reshape(-1,1))
+rmse = np.sqrt(MSE(y,y_pred))
+rmse
+```
+
+## RMSE = 0.1514
+
+
+# Question 4
+### If the input feature is the Temperature and the target is the Humidity and we consider 20-fold cross validations with random_state=2020, the Ridge model with alpha =0.1 and standardize the input train and the input test data. The average RMSE on the test sets is (provide your answer with the first 6 decimal places):
+
+```markdown
+def RMSE(y,yhat):
+  return np.sqrt(MSE(y,yhat))
+ 
+kf = KFold(n_splits=20, random_state=2020,shuffle=True)
+ridge = Ridge(alpha=0.1)
+scale = StandardScaler()
+pipe = Pipeline([('Scale', scale),('Regressor', ridge)])
+
+def DoKFoldRMSE(X,y,model):
+  PE = [] #prediction error
+  for idxtrain, idxtest in kf.split(X):
+    Xtrain = X[idxtrain,:]
+    Xtest = X[idxtest,:]
+    ytrain = y[idxtrain]
+    ytest = y[idxtest]
+    pipe.fit(Xtrain,ytrain)
+    yhat = pipe.predict(Xtest)
+    PE.append(RMSE(ytest,yhat))
+  return (np.mean(PE))
+  
+ 
+ DoKFoldRMSE(temp.reshape(-1,1),y,ridge)
+ ```
+ 
+## RMSE =  0.151438
+ 
+ 
+ 
+# Question 5
+### Suppose we want to use Random Forrest with 100 trees and max_depth=50 to predict the Humidity with the Apparent Temperature and we want to estimate the root mean squared error by using 10-cross validations (random_state=1693) and computing the average of RMSE on the test sets. The result we get is (provide your answer with the first 6 decimal places):
+
+```markdown
+from sklearn.ensemble import RandomForestRegressor
+
+ap_temp = data['Apparent Temperature (C)']
+ap_temp = ap_temp.values
+
+rf = RandomForestRegressor(n_estimators=100, max_depth=50)
+
+def DoKFoldRFRMSE(X,y,model,k,rs):
+  PE = []
+  kf = KFold(n_splits=k, random_state=rs)
+  for idxtrain, idxtest in kf.split(X):
+    Xtrain = X[idxtrain,:]
+    Xtest = X[idxtest,:]
+    ytrain = y[idxtrain]
+    ytest = y[idxtest]
+    model.fit(Xtrain,ytrain)
+    yhat = model.predict(Xtest)
+    PE.append(RMSE(ytest,yhat))
+  return np.mean(PE)
+  
+DoKFoldRFRMSE(ap_temp.reshape(-1,1),y,rf,10,1693)
+```
+
+## RMSE =  0.144983
+
+
+# Question 6
+### Suppose we want use polynomial features of degree 6 and we want to predict the Humidity with the Apparent Temperature and we want to estimate the root mean squared error by using 10-fold cross-validations (random_state=1693) and computing the average of RMSE on the test sets. The result we get is (provide your answer with the first 5 decimal places):
+
+```markdown
+from sklearn.preprocessing import PolynomialFeatures
+
+kf = KFold(n_splits=10, random_state=1693)
+model = LinearRegression()
+poly = PolynomialFeatures(degree=6)
+
+def DoKFoldPolyRMSE(X,y,model,deg):
+  PE = [] #prediction error
+  poly = PolynomialFeatures(degree=deg)
+  pipe = Pipeline([('Scale', scale),('poly', poly), ('Regressor', model)])
+  for idxtrain, idxtest in kf.split(X):
+    Xtrain = X[idxtrain,:]
+    Xtest = X[idxtest,:]
+    ytrain = y[idxtrain]
+    ytest = y[idxtest]
+    pipe.fit(Xtrain,ytrain)
+    yhat = pipe.predict(Xtest)
+    PE.append(RMSE(ytest,yhat))
+  return np.mean(PE)
+  
+DoKFoldPolyRMSE(ap_temp.reshape(-1,1),y,model,6)
+```
+
+## RMSE =  0.14389
+
+
+# Question 7
+### If the input feature is the Temperature and the target is the Humidity and we consider 10-fold cross validations with random_state=1234, the Ridge model with alpha =0.2. Inside the cross-validation loop standardize the input data. The average RMSE on the test sets is (provide your answer with the first 4 decimal places):
+
+```markdown
+kf = KFold(n_splits=10, random_state=1234)
+ridge = Ridge(alpha=0.2)
+pipe = Pipeline([('Scale', scale),('Regressor', ridge)])
+
+DoKFoldRMSE(temp.reshape(-1,1),y, ridge)
+```
+
+## RMSE =  0.1518
+
+
+# Question 8
+### Suppose we use polynomial features of degree 6 and we want to predict the Temperature by using 'Humidity','Wind Speed (km/h)','Pressure (millibars)','Wind Bearing (degrees)' We want to estimate the root mean squared error by using 10-fold cross-validations (random_state=1234) and computing the average of RMSE on the test sets. The result we get is (provide your answer with the first 4 decimal places):
+
+```markdown
+subset = data[['Humidity', 'Wind Speed (km/h)', 'Pressure (millibars)', 'Wind Bearing (degrees)']]
+subset = subset.values
+
+model = LinearRegression()
+kf = KFold(n_splits=10, random_state=1234)
+
+def DoKFoldPolyRMSE(X,y,model,deg):
+  PE = []
+  poly = PolynomialFeatures(degree=deg)
+  pipe = Pipeline([('Scale', scale),('poly', poly), ('Regressor', model)])
+  for idxtrain, idxtest in kf.split(X):
+    Xtrain = X[idxtrain,:]
+    Xtest = X[idxtest,:]
+    ytrain = y[idxtrain]
+    ytest = y[idxtest]
+    pipe.fit(Xtrain,ytrain)
+    yhat = pipe.predict(Xtest)
+    PE.append(RMSE(ytest,yhat))
+  return np.mean(PE)
+  
+  
+DoKFoldPolyRMSE(subset,temp,model,6)
+```
+
+## RMSE =  6.1532
+
+
+# Question 9
+### Suppose we use Random Forest with 100 trees and max_depth=50 and we want to predict the Temperature by using 'Humidity','Wind Speed (km/h)','Pressure (millibars)','Wind Bearing (degrees)' We want to estimate the root mean squared error by using 10-fold cross-validations (random_state=1234) and computing the average of RMSE on the test sets. The result we get is (provide your answer with the first 4 decimal places):
+
+```markdown
+kf = KFold(n_splits=10, random_state=1234)
+rf = RandomForestRegressor(n_estimators=100, max_depth=50)
+
+DoKFoldRFRMSE(subset,temp,rf,10,1234)
+```
+
+## RMSE = 6.2873
